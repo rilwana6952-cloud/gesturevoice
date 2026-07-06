@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GestureVoice • AI Gesture to Speech</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-950 via-purple-950 to-slate-950 text-white min-h-screen">
+
+    <!-- Header -->
+    <header class="border-b border-white/10 bg-black/20 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <span class="text-3xl">🤖</span>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tighter">GestureVoice</h1>
+                    <p class="text-[10px] text-white/50 -mt-1">AI POWERED</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="max-w-5xl mx-auto px-6 pt-10 pb-6 text-center">
+        <h2 class="text-6xl md:text-7xl font-bold tracking-tighter leading-none mb-4">
+            Communicate effortlessly<br>using simple hand gestures.
+        </h2>
+        <p class="max-w-md mx-auto text-xl text-white/60">
+            Real-time gesture to speech. Works entirely in your browser.
+        </p>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 pb-16">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- WEBCAM -->
+            <div class="lg:col-span-7 bg-white/5 border border-white/10 rounded-3xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-xl">Webcam Feed</h3>
+                    <div id="camera-status" class="px-3 py-1 rounded-full text-xs bg-red-500/10 text-red-400 border border-red-500/20">
+                        CAMERA OFF
+                    </div>
+                </div>
+
+                <div class="relative rounded-2xl overflow-hidden bg-black aspect-video border border-white/10">
+                    <video id="webcam" class="absolute inset-0 w-full h-full object-cover scale-x-[-1]" autoplay playsinline muted></video>
+                    <canvas id="canvas" class="absolute inset-0 w-full h-full" width="640" height="480"></canvas>
+                    
+                    <div id="loading-overlay" class="hidden absolute inset-0 bg-black/70 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="w-8 h-8 border-4 border-white/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+                            <p class="text-sm">Initializing AI...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="camera-placeholder" class="absolute inset-0 flex items-center justify-center bg-zinc-950">
+                        <div class="text-center">
+                            <div class="text-6xl mb-2">📷</div>
+                            <p class="text-white/60">Camera is off</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-4">
+                    <button onclick="startCamera()" id="start-btn"
+                            class="flex-1 py-3 bg-white text-black font-semibold rounded-2xl">START CAMERA</button>
+                    <button onclick="stopCamera()" id="stop-btn" disabled
+                            class="flex-1 py-3 bg-white/10 border border-white/20 rounded-2xl">STOP CAMERA</button>
+                </div>
+            </div>
+
+            <!-- DETECTION -->
+            <div class="lg:col-span-5 bg-white/5 border border-white/10 rounded-3xl p-6">
+                <h3 class="font-semibold text-xl mb-4">Detection</h3>
+                
+                <div class="bg-black/30 rounded-2xl p-4 mb-4">
+                    <div class="text-xs text-white/50 mb-1">HAND STATUS</div>
+                    <div id="hand-status-text" class="text-lg font-semibold text-white/60">No Hand Detected</div>
+                </div>
+
+                <div class="bg-black/30 rounded-2xl p-4 mb-4">
+                    <div class="text-xs text-white/50 mb-1">CURRENT GESTURE</div>
+                    <div class="flex items-center gap-4">
+                        <div id="gesture-emoji" class="text-6xl">—</div>
+                        <div>
+                            <div id="gesture-name" class="text-2xl font-semibold">None</div>
+                            <div id="gesture-word" class="text-emerald-400">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-black/30 rounded-2xl p-4">
+                    <div class="flex justify-between text-xs text-white/50 mb-1">
+                        <span>CONFIDENCE</span>
+                        <span id="confidence-value">—</span>
+                    </div>
+                    <div class="h-2 bg-white/10 rounded-full">
+                        <div id="confidence-bar" class="h-2 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full transition-all" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OUTPUT -->
+            <div class="lg:col-span-12 bg-white/5 border border-white/10 rounded-3xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-xl">Recognized Output</h3>
+                    <div class="flex gap-2">
+                        <button onclick="speakAgain()" id="speak-again-btn" disabled class="px-4 py-2 text-sm bg-white/10 rounded-xl">Speak Again</button>
+                        <button onclick="clearOutput()" class="px-4 py-2 text-sm bg-white/10 rounded-xl">Clear</button>
+                    </div>
+                </div>
+                <div class="bg-black/40 rounded-3xl p-8 text-center">
+                    <div id="output-text" class="text-7xl font-bold">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
